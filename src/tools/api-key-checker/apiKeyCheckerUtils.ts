@@ -23,10 +23,13 @@ export interface KeyCheckResult extends CheckResult {
   rawKey: string;
 }
 
+/** USD → CNY conversion rate */
+const CNY_RATE = 6;
+
 /** Extract a numeric balance value for sorting (higher is better). Returns -1 if unparseable. */
 export const extractBalanceValue = (r: KeyCheckResult): number => {
   if (!r.balance) return -1;
-  const nums = r.balance.match(/[\d.]+/g);
+  const nums = r.balance.match(/-?[\d.]+/g);
   if (!nums) return -1;
   return nums.reduce((sum, n) => sum + (parseFloat(n) || 0), 0);
 };
@@ -158,7 +161,11 @@ const extractTotalBalance = (provider: Provider, data: Record<string, unknown>):
   if (provider === 'deepseek') {
     const infos = data['balance_infos'] as Array<Record<string, string>> | undefined;
     if (infos && infos.length > 0) {
-      return infos.reduce((sum, b) => sum + (parseFloat(b.total_balance ?? '0') || 0), 0);
+      return infos.reduce((sum, b) => {
+        const currency = b.currency ?? 'CNY';
+        const val = parseFloat(b.total_balance ?? '0') || 0;
+        return sum + (currency === 'USD' ? val * CNY_RATE : val);
+      }, 0);
     }
   }
   return -1;
@@ -168,7 +175,14 @@ const extractBalance = (provider: Provider, data: Record<string, unknown>): stri
   if (provider === 'deepseek') {
     const infos = data['balance_infos'] as Array<Record<string, string>> | undefined;
     if (infos && infos.length > 0) {
-      return infos.map((b) => `${b.currency ?? 'CNY'} ${b.total_balance ?? '0'}`).join('，');
+      return infos.map((b) => {
+        const currency = b.currency ?? 'CNY';
+        const val = parseFloat(b.total_balance ?? '0') || 0;
+        if (currency === 'USD') {
+          return `¥${(val * CNY_RATE).toFixed(2)}`;
+        }
+        return `¥${val.toFixed(2)}`;
+      }).join('，');
     }
     return JSON.stringify(data);
   }

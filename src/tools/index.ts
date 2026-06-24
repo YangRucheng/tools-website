@@ -9,3 +9,4 @@ import './jwt';
 import './hash';
 import './qrcode';
 import './api-key-checker';
+import './traffic-disappearer';

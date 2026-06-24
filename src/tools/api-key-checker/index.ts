@@ -4,7 +4,7 @@ import type { Tool, ToolShareState } from '@/tools/types';
 
 const tool: Tool = {
   id: 'api-key-checker',
-  name: '密钥检查',
+  name: '大模型密钥检查',
   category: Category.LLM,
   route: '/api-key-checker',
   description: '批量检查 DeepSeek、智谱等大模型 API Key 是否可用，支持余额查询',

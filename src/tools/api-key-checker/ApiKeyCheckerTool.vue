@@ -80,6 +80,23 @@ const copyKey = async (rawKey: string) => {
   await copy(rawKey);
 };
 
+const deleteKey = (r: KeyCheckResult) => {
+  // Remove from results
+  results.value = results.value.filter((item) => item.rawKey !== r.rawKey);
+  // Remove corresponding line from input
+  const lines = input.value.split('\n');
+  let removed = false;
+  input.value = lines
+    .filter((line) => {
+      if (!removed && line.trim() === r.rawKey) {
+        removed = true;
+        return false;
+      }
+      return true;
+    })
+    .join('\n');
+};
+
 useSharedStateRestore({ provider }, () => {
   // Only restore provider; input keys are not shared for security
 });
@@ -114,7 +131,8 @@ watch([provider], () => updateShareState());
             <code class="result-key">{{ r.maskedKey }}</code>
             <span class="result-msg">{{ r.message }}</span>
             <span class="result-balance">{{ r.balance }}</span>
-            <n-button size="tiny" secondary @click="copyKey(r.rawKey)">复制</n-button>
+            <n-button v-if="!r.valid" size="tiny" secondary class="delete-btn" @click="deleteKey(r)">删除</n-button>
+            <n-button v-else size="tiny" secondary @click="copyKey(r.rawKey)">复制</n-button>
           </div>
         </div>
       </template>
@@ -188,5 +206,16 @@ watch([provider], () => updateShareState());
   color: var(--app-text-muted);
   font-size: 12px;
   margin-top: var(--app-spacing-xs);
+}
+
+.delete-btn {
+  color: #ef4444 !important;
+  border-color: #ef4444 !important;
+}
+
+.delete-btn:hover {
+  color: #dc2626 !important;
+  border-color: #dc2626 !important;
+  background: #fef2f2 !important;
 }
 </style>

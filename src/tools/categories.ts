@@ -11,7 +11,7 @@ export const CATEGORY_META: Record<Category, CategoryMeta> = {
   [Category.TIME_ID]: { label: '时间与标识', order: 2 },
   [Category.SECURITY]: { label: '安全与令牌', order: 3 },
   [Category.GENERATION]: { label: '生成工具', order: 4 },
-  [Category.LLM]: { label: '大模型', order: 5 },
+  [Category.LLM]: { label: '更多工具', order: 5 },
 };
 
 export const ORDERED_CATEGORIES: Category[] = (
