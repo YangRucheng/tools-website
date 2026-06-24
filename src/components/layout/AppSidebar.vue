@@ -5,7 +5,7 @@ import { NInput } from 'naive-ui';
 import { ORDERED_CATEGORIES, CATEGORY_META } from '@/tools/categories';
 import { getToolsByCategory, getToolByRoute, searchTools } from '@/tools/registry';
 import { Category } from '@/tools/types';
-import { DATA_ICON, ENCODE_ICON, TIME_ICON, SECURITY_ICON, GENERATE_ICON, LLM_ICON, SEARCH_ICON } from '@/utils/icons';
+import { DATA_ICON, ENCODE_ICON, TIME_ICON, SECURITY_ICON, GENERATE_ICON, TOOLS_ICON, SEARCH_ICON } from '@/utils/icons';
 
 const router = useRouter();
 const route = useRoute();
@@ -23,7 +23,7 @@ const categoryIconMap: Record<Category, string> = {
   [Category.TIME_ID]: TIME_ICON,
   [Category.SECURITY]: SECURITY_ICON,
   [Category.GENERATION]: GENERATE_ICON,
-  [Category.LLM]: LLM_ICON,
+  [Category.LLM]: TOOLS_ICON,
 };
 
 const isActive = (toolId: string) => activeTool.value?.id === toolId;
@@ -124,7 +124,8 @@ const handleSearchKeydown = (e: KeyboardEvent) => {
 }
 
 .brand-logo {
-  width: 100%;
+  width: 60%;
+  max-width: 140px;
   height: auto;
   object-fit: contain;
   flex-shrink: 0;
