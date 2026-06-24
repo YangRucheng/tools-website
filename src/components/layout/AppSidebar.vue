@@ -2,13 +2,16 @@
 import { computed, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { NInput } from 'naive-ui';
-import { ORDERED_CATEGORIES, CATEGORY_META } from '@/tools/categories';
+import { CATEGORY_META, ORDERED_CATEGORIES } from '@/tools/categories';
 import { getToolsByCategory, getToolByRoute, searchTools } from '@/tools/registry';
 import { Category } from '@/tools/types';
+import { useBrand } from '@/composables/useBrand';
 import { DATA_ICON, ENCODE_ICON, TIME_ICON, SECURITY_ICON, GENERATE_ICON, TOOLS_ICON, SEARCH_ICON } from '@/utils/icons';
 
 const router = useRouter();
 const route = useRoute();
+
+const brand = useBrand();
 
 const searchQuery = ref('');
 const showResults = ref(false);
@@ -44,8 +47,8 @@ const handleSearchKeydown = (e: KeyboardEvent) => {
 <template>
   <aside class="sidebar">
     <div class="sidebar-brand" @click="router.push('/')">
-      <img src="/logo.png" alt="logo" class="brand-logo" />
-      <span class="brand-text">御坂工具网</span>
+      <img :src="brand.logoPath" alt="logo" class="brand-logo" />
+      <span class="brand-text">{{ brand.siteName }}</span>
     </div>
 
     <div class="sidebar-search">

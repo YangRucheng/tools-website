@@ -6,8 +6,10 @@ import { Category, type Tool } from '@/tools/types'
 import {
   DATA_ICON, ENCODE_ICON, TIME_ICON, SECURITY_ICON, GENERATE_ICON, LLM_ICON,
 } from '@/utils/icons'
+import { useBrand } from '@/composables/useBrand'
 
 const router = useRouter()
+const brand = useBrand()
 
 const categoryIconMap: Record<Category, string> = {
   [Category.DATA_PROCESSING]: DATA_ICON,
@@ -49,8 +51,8 @@ const getStaggerDelay = (toolId: string) => `${delayMap.get(toolId) ?? 0}ms`
       <div class="hero-dots" aria-hidden="true" />
 
       <div class="hero-content">
-        <h1 class="hero-title">御坂工具网</h1>
-        <p class="hero-subtitle">开发者日常工具集 — 本地优先，即开即用</p>
+        <h1 class="hero-title">{{ brand.siteName }}</h1>
+        <p class="hero-subtitle">{{ brand.tagline }}</p>
       </div>
     </section>
 

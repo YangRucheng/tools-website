@@ -1,13 +1,27 @@
 <script setup lang="ts">
-import { provide, ref } from 'vue';
+import { provide, ref, watch } from 'vue';
 import { NConfigProvider, NMessageProvider, NLayout, NLayoutHeader, NLayoutContent } from 'naive-ui';
 import AppHeader from '@/components/layout/AppHeader.vue';
 import AppSidebar from '@/components/layout/AppSidebar.vue';
 import ToolContentArea from '@/components/layout/ToolContentArea.vue';
 import { useTheme } from '@/composables/useTheme';
+import { provideBrand } from '@/composables/useBrand';
 import type { ToolShareState } from '@/tools/types';
 
 const { naiveTheme, themeOverrides } = useTheme();
+
+// Brand detection — runs once before provide
+const brand = provideBrand();
+
+// Dynamic document head
+const setDocHead = () => {
+  document.title = `${brand.value.siteName} — 开发者工具站`;
+  const desc = document.querySelector('meta[name="description"]');
+  if (desc) desc.setAttribute('content', brand.value.description);
+  const favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null;
+  if (favicon) favicon.href = brand.value.faviconPath;
+};
+watch(brand, setDocHead, { immediate: true });
 
 // Shared tool state for share functionality
 const toolState = ref<ToolShareState>({});

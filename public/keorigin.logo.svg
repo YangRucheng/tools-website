@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">科基工具网图形标</title>
+  <desc id="desc">A technology mark combining K, code brackets, and connected tool nodes.</desc>
+  <defs>
+    <linearGradient id="markGradient" x1="18" y1="18" x2="108" y2="112" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1265d8"/>
+      <stop offset="1" stop-color="#11a88b"/>
+    </linearGradient>
+  </defs>
+  <rect x="10" y="10" width="108" height="108" rx="26" fill="#ffffff"/>
+  <rect x="10" y="10" width="108" height="108" rx="26" fill="url(#markGradient)" opacity="0.12"/>
+  <path d="M36 42 20 64l16 22" fill="none" stroke="#1265d8" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M92 42 108 64 92 86" fill="none" stroke="#11a88b" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M52 34v60M54 64l34-30M56 64l34 30" fill="none" stroke="#172033" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="52" cy="34" r="7" fill="#1265d8"/>
+  <circle cx="88" cy="34" r="7" fill="#11a88b"/>
+  <circle cx="90" cy="94" r="7" fill="#1265d8"/>
+</svg>

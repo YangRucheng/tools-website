@@ -6,6 +6,7 @@ import { useTheme } from '@/composables/useTheme';
 import { encodeShareParam } from '@/composables/useShareState';
 import { getToolByRoute } from '@/tools/registry';
 import { SUN_ICON, MOON_ICON, SHARE_ICON, MENU_ICON } from '@/utils/icons';
+import { useBrand } from '@/composables/useBrand';
 import type { ToolShareState } from '@/tools/types';
 
 defineEmits<{ toggleSidebar: [] }>();
@@ -13,6 +14,7 @@ defineEmits<{ toggleSidebar: [] }>();
 const { isDark, toggle } = useTheme();
 const router = useRouter();
 const route = useRoute();
+const brand = useBrand();
 
 const toolState = inject<{ value: ToolShareState }>('toolState');
 
@@ -36,7 +38,7 @@ const handleShare = () => {
       <n-button quaternary circle size="small" class="menu-btn" @click="$emit('toggleSidebar')" title="菜单">
         <span class="icon-inner" v-html="MENU_ICON" />
       </n-button>
-      <span class="brand" @click="router.push('/')">公众号 Misaka 御坂网络精心设计，本地优先、即开即用！</span>
+      <span class="brand" @click="router.push('/')">{{ brand.headerText }}</span>
     </div>
     <div class="header-right">
       <n-button quaternary circle @click="toggle" :title="isDark ? '浅色模式' : '深色模式'">
