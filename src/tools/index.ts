@@ -8,5 +8,6 @@ import './uuid';
 import './jwt';
 import './hash';
 import './qrcode';
+import './random-key';
 import './api-key-checker';
 import './traffic-disappearer';

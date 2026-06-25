@@ -4,7 +4,7 @@ import { ORDERED_CATEGORIES, CATEGORY_META } from '@/tools/categories'
 import { getToolsByCategory, getTools } from '@/tools/registry'
 import { Category, type Tool } from '@/tools/types'
 import {
-  DATA_ICON, ENCODE_ICON, TIME_ICON, SECURITY_ICON, GENERATE_ICON, LLM_ICON,
+  ENCODE_ICON, GENERATE_ICON, NETWORK_ICON, MORE_ICON,
 } from '@/utils/icons'
 import { useBrand } from '@/composables/useBrand'
 
@@ -12,12 +12,10 @@ const router = useRouter()
 const brand = useBrand()
 
 const categoryIconMap: Record<Category, string> = {
-  [Category.DATA_PROCESSING]: DATA_ICON,
   [Category.ENCODING]: ENCODE_ICON,
-  [Category.TIME_ID]: TIME_ICON,
-  [Category.SECURITY]: SECURITY_ICON,
   [Category.GENERATION]: GENERATE_ICON,
-  [Category.LLM]: LLM_ICON,
+  [Category.NETWORK]: NETWORK_ICON,
+  [Category.MORE]: MORE_ICON,
 }
 
 const tools = getTools()
@@ -53,6 +51,7 @@ const getStaggerDelay = (toolId: string) => `${delayMap.get(toolId) ?? 0}ms`
       <div class="hero-content">
         <h1 class="hero-title">{{ brand.siteName }}</h1>
         <p class="hero-subtitle">{{ brand.tagline }}</p>
+        <p class="hero-sr-only">免费在线开发者工具集，涵盖 JSON 格式化、Base64 编解码、时间戳转换、UUID 生成、JWT 解析、哈希计算、二维码生成、URL 编解码等工具，所有处理在浏览器本地完成，即开即用。</p>
       </div>
     </section>
 
@@ -148,6 +147,19 @@ const getStaggerDelay = (toolId: string) => `${delayMap.get(toolId) ?? 0}ms`
   margin: 0;
   max-width: 480px;
   line-height: 1.6;
+}
+
+/* Screen-reader only — visible to search engines, hidden from visual display */
+.hero-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* Animated floating orbs */

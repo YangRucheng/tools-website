@@ -25,7 +25,7 @@ const handleShare = () => {
   if (!tool?.encodeShareState || !toolState) return;
   const encoded = tool.encodeShareState(toolState.value);
   const param = encodeShareParam(encoded);
-  const url = `${window.location.origin}${window.location.pathname}#${tool.route}?state=${param}`;
+  const url = `${window.location.origin}${tool.route}?state=${param}`;
   navigator.clipboard.writeText(url).catch(() => {
     // fallback ignored
   });

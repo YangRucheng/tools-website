@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, reactive } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { NInput } from 'naive-ui';
 import { CATEGORY_META, ORDERED_CATEGORIES } from '@/tools/categories';
 import { getToolsByCategory, getToolByRoute, searchTools } from '@/tools/registry';
 import { Category } from '@/tools/types';
 import { useBrand } from '@/composables/useBrand';
-import { DATA_ICON, ENCODE_ICON, TIME_ICON, SECURITY_ICON, GENERATE_ICON, TOOLS_ICON, SEARCH_ICON } from '@/utils/icons';
+import { ENCODE_ICON, GENERATE_ICON, NETWORK_ICON, MORE_ICON, SEARCH_ICON } from '@/utils/icons';
 
 const router = useRouter();
 const route = useRoute();
@@ -21,13 +21,23 @@ const activeTool = computed(() => getToolByRoute(route.path));
 const results = computed(() => searchTools(searchQuery.value));
 
 const categoryIconMap: Record<Category, string> = {
-  [Category.DATA_PROCESSING]: DATA_ICON,
   [Category.ENCODING]: ENCODE_ICON,
-  [Category.TIME_ID]: TIME_ICON,
-  [Category.SECURITY]: SECURITY_ICON,
   [Category.GENERATION]: GENERATE_ICON,
-  [Category.LLM]: TOOLS_ICON,
+  [Category.NETWORK]: NETWORK_ICON,
+  [Category.MORE]: MORE_ICON,
 };
+
+const collapsed = reactive<Record<string, boolean>>({});
+
+const toggleCategory = (cat: Category) => {
+  if (collapsed[cat]) {
+    delete collapsed[cat];
+  } else {
+    collapsed[cat] = true;
+  }
+};
+
+const isCollapsed = (cat: Category) => !!collapsed[cat];
 
 const isActive = (toolId: string) => activeTool.value?.id === toolId;
 
@@ -42,12 +52,27 @@ const handleSearchKeydown = (e: KeyboardEvent) => {
     selectTool(results.value[0]);
   }
 };
+
+// Auto-expand category containing the active tool
+const getCategoryByToolId = (toolId: string): Category | undefined => {
+  for (const cat of ORDERED_CATEGORIES) {
+    if (getToolsByCategory(cat).some(t => t.id === toolId)) return cat;
+  }
+  return undefined;
+};
+
+computed(() => {
+  const cat = activeTool.value ? getCategoryByToolId(activeTool.value.id) : undefined;
+  if (cat && collapsed[cat]) {
+    delete collapsed[cat];
+  }
+});
 </script>
 
 <template>
   <aside class="sidebar">
     <div class="sidebar-brand" @click="router.push('/')">
-      <img :src="brand.logoPath" alt="logo" class="brand-logo" />
+      <img :src="brand.logoPath" :alt="`${brand.siteName} logo`" class="brand-logo" />
       <span class="brand-text">{{ brand.siteName }}</span>
     </div>
 
@@ -84,18 +109,32 @@ const handleSearchKeydown = (e: KeyboardEvent) => {
         :key="cat"
         class="category-group"
       >
-        <div class="category-header">
+        <div
+          class="category-header"
+          role="button"
+          :aria-expanded="!isCollapsed(cat)"
+          @click="toggleCategory(cat)"
+        >
           <span class="category-icon" v-html="categoryIconMap[cat]" />
           <span class="category-label">{{ CATEGORY_META[cat].label }}</span>
+          <span class="category-count">{{ getToolsByCategory(cat).length }}</span>
+          <span class="category-arrow" :class="{ collapsed: isCollapsed(cat) }">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </span>
         </div>
         <div
-          v-for="tool in getToolsByCategory(cat)"
-          :key="tool.id"
-          class="tool-item"
-          :class="{ active: isActive(tool.id) }"
-          @click="selectTool(tool)"
+          v-if="!isCollapsed(cat)"
+          class="category-tools"
         >
-          <span class="tool-name">{{ tool.name }}</span>
+          <div
+            v-for="tool in getToolsByCategory(cat)"
+            :key="tool.id"
+            class="tool-item"
+            :class="{ active: isActive(tool.id) }"
+            @click="selectTool(tool)"
+          >
+            <span class="tool-name">{{ tool.name }}</span>
+          </div>
         </div>
       </div>
     </nav>
@@ -127,15 +166,15 @@ const handleSearchKeydown = (e: KeyboardEvent) => {
 }
 
 .brand-logo {
-  width: 60%;
-  max-width: 140px;
+  width: 50%;
+  max-width: 120px;
   height: auto;
   object-fit: contain;
   flex-shrink: 0;
 }
 
 .brand-text {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 800;
   background: var(--app-gradient-text);
   -webkit-background-clip: text;
@@ -190,42 +229,75 @@ const handleSearchKeydown = (e: KeyboardEvent) => {
 
 .sidebar-nav {
   flex: 1;
-  padding: var(--app-spacing-sm) 0;
+  padding: var(--app-spacing-xs) 0;
   overflow-y: auto;
 }
 
 .category-group {
-  margin-bottom: var(--app-spacing-xs);
+  margin-bottom: 2px;
 }
 
 .category-header {
   display: flex;
   align-items: center;
-  gap: var(--app-spacing-sm);
-  padding: var(--app-spacing-sm) var(--app-spacing-md);
-  font-size: 12px;
+  gap: 6px;
+  padding: 7px var(--app-spacing-md) 7px var(--app-spacing-sm);
+  font-size: 11px;
   font-weight: 600;
   color: var(--app-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  user-select: none;
+  border-radius: 0;
+  transition: background 0.12s;
+}
+
+.category-header:hover {
+  background: var(--app-surface-hover);
 }
 
 .category-icon {
   display: inline-flex;
   align-items: center;
+  opacity: 0.55;
+}
+
+.category-label {
+  flex: 1;
+}
+
+.category-count {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--app-text-muted);
   opacity: 0.6;
+}
+
+.category-arrow {
+  display: inline-flex;
+  align-items: center;
+  transition: transform 0.2s ease;
+  opacity: 0.45;
+}
+
+.category-arrow.collapsed {
+  transform: rotate(-90deg);
+}
+
+.category-tools {
+  overflow: hidden;
 }
 
 .tool-item {
   display: flex;
   align-items: center;
-  padding: var(--app-spacing-sm) var(--app-spacing-md);
-  padding-left: 44px;
+  padding: 6px var(--app-spacing-md) 6px 36px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--app-text);
-  border-left: 3px solid transparent;
-  transition: all 0.15s;
+  border-left: 2px solid transparent;
+  transition: all 0.12s;
   user-select: none;
 }
 

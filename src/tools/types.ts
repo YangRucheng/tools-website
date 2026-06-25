@@ -1,12 +1,10 @@
 import type { Component } from 'vue';
 
 export enum Category {
-  DATA_PROCESSING = 'data-processing',
   ENCODING = 'encoding',
-  TIME_ID = 'time-id',
-  SECURITY = 'security',
   GENERATION = 'generation',
-  LLM = 'llm',
+  NETWORK = 'network',
+  MORE = 'more',
 }
 
 export interface ToolShareState {
@@ -21,6 +19,8 @@ export interface Tool {
   readonly description: string;
   readonly keywords: readonly string[];
   readonly component: () => Promise<Component>;
+  readonly seoTitle?: string;
+  readonly seoDescription?: string;
   readonly encodeShareState?: (state: ToolShareState) => string;
   readonly decodeShareState?: (encoded: string) => ToolShareState;
 }

@@ -6,12 +6,10 @@ export interface CategoryMeta {
 }
 
 export const CATEGORY_META: Record<Category, CategoryMeta> = {
-  [Category.DATA_PROCESSING]: { label: '数据处理', order: 0 },
-  [Category.ENCODING]: { label: '编码转换', order: 1 },
-  [Category.TIME_ID]: { label: '时间与标识', order: 2 },
-  [Category.SECURITY]: { label: '安全与令牌', order: 3 },
-  [Category.GENERATION]: { label: '生成工具', order: 4 },
-  [Category.LLM]: { label: '更多工具', order: 5 },
+  [Category.ENCODING]: { label: '编解码', order: 0 },
+  [Category.GENERATION]: { label: '生成器', order: 1 },
+  [Category.NETWORK]: { label: '网络工具', order: 2 },
+  [Category.MORE]: { label: '更多工具', order: 3 },
 };
 
 export const ORDERED_CATEGORIES: Category[] = (

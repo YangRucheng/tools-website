@@ -13,15 +13,11 @@ const { naiveTheme, themeOverrides } = useTheme();
 // Brand detection — runs once before provide
 const brand = provideBrand();
 
-// Dynamic document head
-const setDocHead = () => {
-  document.title = `${brand.value.siteName} — 开发者工具站`;
-  const desc = document.querySelector('meta[name="description"]');
-  if (desc) desc.setAttribute('content', brand.value.description);
+// Dynamic favicon — brand-level, persists across navigation
+watch(() => brand.value.faviconPath, (path) => {
   const favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null;
-  if (favicon) favicon.href = brand.value.faviconPath;
-};
-watch(brand, setDocHead, { immediate: true });
+  if (favicon) favicon.href = path;
+}, { immediate: true });
 
 // Shared tool state for share functionality
 const toolState = ref<ToolShareState>({});
