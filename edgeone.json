@@ -20,5 +20,11 @@
   ],
   "caches": [
     { "source": "/misaka-assets/*", "cacheTtl": 31536000 }
+  ],
+  "rewrites": [
+    {
+      "source": "!/misaka-assets/*",
+      "target": "/index.html"
+    }
   ]
 }

@@ -19,7 +19,7 @@ const { mode, uuidVersion, count, uppercase, noDashes, input, clear } = useToolS
   mode: 'generate' as 'generate' | 'validate',
   uuidVersion: 'v4' as UuidVersion,
   count: 10,
-  uppercase: false,
+  uppercase: true,
   noDashes: false,
   input: '',
 });

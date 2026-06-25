@@ -15,9 +15,9 @@ export interface BrandConfig {
 export const DEFAULT_BRAND: BrandConfig = {
   siteName: '工具网',
   tagline: '开发者日常工具集 — 本地优先，即开即用',
-  description: '本地优先开发者工具站 — 所有处理在浏览器本地完成',
-  logoPath: 'https://cdn.micono.eu.org/icon/logo.png',
-  faviconPath: 'https://cdn.micono.eu.org/icon/logo.png',
+  description: '免费在线开发者工具集，提供 JSON 格式化、Base64 编解码、时间戳转换、UUID 生成、JWT 解析、哈希计算、二维码生成、URL 编解码等常用开发工具，所有处理在浏览器本地完成，数据安全不上传。',
+  logoPath: 'https://picsum.photos/seed/tools/200',
+  faviconPath: 'https://picsum.photos/seed/tools/32',
   headerText: '精心设计的工具网站，本地优先、即开即用！',
 }
 
@@ -28,7 +28,7 @@ const DOMAIN_BRAND_MAP: Record<string, BrandConfig> = {
   '*.misaka-network.top': {
     siteName: '御坂工具网',
     tagline: '开发者日常工具集 — 本地优先，即开即用',
-    description: '本地优先开发者工具站 — 所有处理在浏览器本地完成',
+    description: '御坂工具网 — 免费在线开发者工具集，提供 JSON 格式化、Base64 编解码、时间戳转换、UUID 生成、JWT 解析、哈希计算、二维码生成、URL 编解码等常用工具，本地优先，数据不上传。',
     logoPath: '/logo.png',
     faviconPath: '/favicon.png',
     headerText: '公众号 Misaka 御坂网络精心设计，本地优先、即开即用！',
