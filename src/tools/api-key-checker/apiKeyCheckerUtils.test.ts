@@ -17,6 +17,7 @@ const DS_KEY_A = 'sk-abcdef1234567890abcdef1234567890'; // sk- + 32 hex
 const DS_KEY_B = 'sk-00000000000000000000000000000000'; // sk- + 32 hex (zero)
 const DS_KEY_C = 'sk-fedcba0987654321fedcba0987654321'; // sk- + 32 hex
 const ZP_KEY_A = 'abcdef1234567890abcdef1234567890.Abcdef1234567890'; // 32 hex . 16 alphanum
+const AN_KEY_A = 'sk-ant-api03-abcDEF1234567890abcDEF1234567890ghij'; // sk-ant- + key body
 
 describe('isValidKeyFormat', () => {
   it('accepts DeepSeek format: sk- + 32+ hex', () => {
@@ -27,6 +28,11 @@ describe('isValidKeyFormat', () => {
   it('accepts 智谱 format: 32 hex + dot + 8+ alphanumeric', () => {
     expect(isValidKeyFormat('09b6f7d4ef2b408a94c5ca7032a303ef.47A9zFs2tzQNChbr')).toBe(true);
     expect(isValidKeyFormat('abcdef1234567890abcdef1234567890.AbCdEf1234567890')).toBe(true);
+  });
+
+  it('accepts Anthropic format: sk-ant- + 20+ key chars', () => {
+    expect(isValidKeyFormat('sk-ant-api03-abcDEF1234567890abcDEF1234567890ghij')).toBe(true);
+    expect(isValidKeyFormat('sk-ant-admin01-AbCd_1234-EfGh5678IjKl')).toBe(true);
   });
 
   it('rejects lines that do not match any known key pattern', () => {
@@ -205,6 +211,47 @@ describe('checkKey', () => {
     const result = await checkKey(ZP_KEY_A, 'zhipu');
     expect(result.valid).toBe(false);
     expect(result.message).toBe('密钥无效');
+  });
+
+  it('returns valid=true for Anthropic when the messages API succeeds', async () => {
+    mockFetch({ ok: true, json: async () => ({ id: 'msg_1', content: [{ type: 'text', text: 'Hi' }] }) });
+
+    const result = await checkKey(AN_KEY_A, 'anthropic');
+    expect(result.valid).toBe(true);
+    expect(result.message).toContain('claude-opus-4-8');
+  });
+
+  it('returns 密钥无效 for Anthropic on authentication error', async () => {
+    mockFetch({
+      ok: false,
+      status: 401,
+      text: async () => JSON.stringify({
+        type: 'error',
+        error: { type: 'authentication_error', message: 'invalid x-api-key' },
+      }),
+    });
+
+    const result = await checkKey(AN_KEY_A, 'anthropic');
+    expect(result.valid).toBe(false);
+    expect(result.message).toBe('密钥无效');
+  });
+
+  it('returns 余额不足 for Anthropic when credit balance is too low', async () => {
+    mockFetch({
+      ok: false,
+      status: 400,
+      text: async () => JSON.stringify({
+        type: 'error',
+        error: {
+          type: 'invalid_request_error',
+          message: 'Your credit balance is too low to access the Anthropic API.',
+        },
+      }),
+    });
+
+    const result = await checkKey(AN_KEY_A, 'anthropic');
+    expect(result.valid).toBe(false);
+    expect(result.message).toBe('余额不足');
   });
 });
 

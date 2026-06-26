@@ -1,11 +1,12 @@
-export type Provider = 'deepseek' | 'zhipu';
+export type Provider = 'deepseek' | 'zhipu' | 'anthropic';
 
-export const PROVIDERS: Provider[] = ['deepseek', 'zhipu'];
+export const PROVIDERS: Provider[] = ['deepseek', 'zhipu', 'anthropic'];
 
 /** Patterns for valid API key formats. Lines not matching any pattern are silently dropped. */
 const KEY_PATTERNS: RegExp[] = [
   /^sk-[a-f0-9]{32,}$/,              // DeepSeek: sk- + 32+ hex chars
   /^[a-f0-9]{32}\.[A-Za-z0-9]{8,}$/, // 智谱: 32 hex + dot + 8+ alphanumeric
+  /^sk-ant-[A-Za-z0-9_-]{20,}$/,     // Anthropic: sk-ant- + key body
 ];
 
 export const isValidKeyFormat = (key: string): boolean =>
@@ -65,11 +66,21 @@ const PROVIDER_CONFIGS: Record<Provider, ProviderConfig> = {
     chatPath: '/chat/completions',
     defaultModel: 'glm-5.1',
   },
+  anthropic: {
+    id: 'anthropic',
+    name: 'Anthropic',
+    baseUrl: 'https://api.anthropic.com',
+    hasBalanceApi: false,
+    modelsPath: '/v1/models',
+    chatPath: '/v1/messages',
+    defaultModel: 'claude-opus-4-8',
+  },
 };
 
 export const PROVIDER_LABELS: Record<Provider, string> = {
   deepseek: 'DeepSeek',
   zhipu: '智谱',
+  anthropic: 'Anthropic',
 };
 
 export const maskKey = (key: string): string => {
@@ -157,6 +168,37 @@ const checkViaModelsAndChat = async (apiKey: string, config: ProviderConfig): Pr
   return { valid: true, balance: '', message: `密钥有效（已通过模型 ${model} 验证）` };
 };
 
+// Anthropic uses x-api-key auth, requires anthropic-version, and needs the
+// dangerous-direct-browser-access header to allow this browser-side request
+// through CORS. It has no balance API, so a minimal /v1/messages call against
+// the default model verifies both auth and model access.
+const checkAnthropic = async (apiKey: string, config: ProviderConfig): Promise<CheckResult> => {
+  const res = await fetch(`${config.baseUrl}${config.chatPath}`, {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: config.defaultModel,
+      max_tokens: 1,
+      messages: [{ role: 'user', content: 'Hi' }],
+    }),
+  });
+  if (res.ok) {
+    return { valid: true, balance: '', message: `密钥有效（已通过模型 ${config.defaultModel} 验证）` };
+  }
+  const parsed = await parseErrorResponse(res);
+  // A key that authenticates but has no credits fails with a 400 whose message
+  // mentions the credit balance — surface it as 余额不足 rather than 密钥无效.
+  if (/credit balance/i.test(parsed.message)) {
+    return { valid: false, balance: '', message: '余额不足' };
+  }
+  return errorToCheckResult(parsed);
+};
+
 const extractTotalBalance = (provider: Provider, data: Record<string, unknown>): number => {
   if (provider === 'deepseek') {
     const infos = data['balance_infos'] as Array<Record<string, string>> | undefined;
@@ -201,6 +243,9 @@ const extractModelList = (data: Record<string, unknown>): string[] => {
 
 export const checkKey = async (apiKey: string, provider: Provider): Promise<CheckResult> => {
   const config = PROVIDER_CONFIGS[provider];
+  if (provider === 'anthropic') {
+    return checkAnthropic(apiKey, config);
+  }
   if (config.hasBalanceApi) {
     return checkViaBalance(apiKey, config);
   }
