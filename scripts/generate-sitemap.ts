@@ -32,6 +32,7 @@ const entries: SitemapEntry[] = [
   { path: '/qrcode', lastmod: '2025-12-01', changefreq: 'monthly', priority: 0.8 },
   { path: '/api-key-checker', lastmod: '2025-12-01', changefreq: 'monthly', priority: 0.8 },
   { path: '/traffic-disappearer', lastmod: '2025-06-01', changefreq: 'monthly', priority: 0.8 },
+  { path: '/dns-resolver', lastmod: '2026-07-07', changefreq: 'monthly', priority: 0.8 },
 ]
 
 const generateSitemap = (baseUrl: string): string => {

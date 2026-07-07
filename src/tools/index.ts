@@ -11,3 +11,4 @@ import './qrcode';
 import './random-key';
 import './api-key-checker';
 import './traffic-disappearer';
+import './dns-resolver';
