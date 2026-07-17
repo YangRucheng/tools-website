@@ -15,6 +15,7 @@ const brand = provideBrand();
 
 // Dynamic favicon — brand-level, persists across navigation
 watch(() => brand.value.faviconPath, (path) => {
+  if (!path) return;
   const favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null;
   if (favicon) favicon.href = path;
 }, { immediate: true });

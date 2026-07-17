@@ -72,7 +72,7 @@ computed(() => {
 <template>
   <aside class="sidebar">
     <div class="sidebar-brand" @click="router.push('/')">
-      <img :src="brand.logoPath" :alt="`${brand.siteName} logo`" class="brand-logo" />
+      <img v-if="brand.logoPath" :src="brand.logoPath" :alt="`${brand.siteName} logo`" class="brand-logo" />
       <span class="brand-text">{{ brand.siteName }}</span>
     </div>
 

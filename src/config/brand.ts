@@ -16,8 +16,8 @@ export const DEFAULT_BRAND: BrandConfig = {
   siteName: '工具网',
   tagline: '开发者日常工具集 — 本地优先，即开即用',
   description: '免费在线开发者工具集，提供 JSON 格式化、Base64 编解码、时间戳转换、UUID 生成、JWT 解析、哈希计算、二维码生成、URL 编解码等常用开发工具，所有处理在浏览器本地完成，数据安全不上传。',
-  logoPath: 'https://picsum.photos/seed/tools/200',
-  faviconPath: 'https://picsum.photos/seed/tools/32',
+  logoPath: '',
+  faviconPath: '',
   headerText: '精心设计的工具网站，本地优先、即开即用！',
 }
 
