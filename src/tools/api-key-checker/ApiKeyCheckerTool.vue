@@ -1,8 +1,16 @@
 <script setup lang="ts">
 import { ref, computed, inject, watch } from 'vue';
-import { NButton, NSelect } from 'naive-ui';
-import { batchCheckKeys, PROVIDERS, PROVIDER_LABELS, extractBalanceValue } from './apiKeyCheckerUtils';
-import type { Provider, KeyCheckResult } from './apiKeyCheckerUtils';
+import { NButton, NInput, NSelect } from 'naive-ui';
+import {
+  batchCheckKeys,
+  extractBalanceValue,
+  INTERFACE_TYPES,
+  INTERFACE_LABELS,
+  SUPPLIERS_BY_INTERFACE,
+  SUPPLIER_LABELS,
+  getSupplierConfig,
+} from './apiKeyCheckerUtils';
+import type { InterfaceType, Supplier, KeyCheckResult, CheckOptions } from './apiKeyCheckerUtils';
 import ToolLayout from '@/components/common/ToolLayout.vue';
 import ToolInput from '@/components/common/ToolInput.vue';
 import ToolOptionsBar from '@/components/common/ToolOptionsBar.vue';
@@ -15,22 +23,44 @@ import type { ToolShareState } from '@/tools/types';
 
 const { copy } = useClipboard();
 
-const { input, provider, sortMode, clear } = useToolStorage('api-key-checker', {
+const {
+  input,
+  interfaceType,
+  supplier,
+  customBaseUrl,
+  customBalancePath,
+  testModel,
+  sortMode,
+  clear,
+} = useToolStorage('api-key-checker', {
   input: '',
-  provider: 'deepseek' as Provider,
+  interfaceType: 'openai' as InterfaceType,
+  supplier: 'deepseek' as Supplier,
+  customBaseUrl: '',
+  customBalancePath: '/user/balance',
+  testModel: '',
   sortMode: 'default' as 'default' | 'balance',
 });
 
 const results = ref<KeyCheckResult[]>([]);
 const checking = ref(false);
+const hasChecked = ref(false);
 const error = ref('');
 
 const setToolState = inject<(state: ToolShareState) => void>('setToolState', () => {});
 
-const providerOptions = PROVIDERS.map((p) => ({
-  label: PROVIDER_LABELS[p],
-  value: p,
+const interfaceOptions = INTERFACE_TYPES.map((t) => ({
+  label: INTERFACE_LABELS[t],
+  value: t,
 }));
+
+// 供应商选项随接口类型过滤
+const supplierOptions = computed(() =>
+  SUPPLIERS_BY_INTERFACE[interfaceType.value].map((s) => ({
+    label: SUPPLIER_LABELS[s],
+    value: s,
+  })),
+);
 
 const sortOptions = [
   { label: '默认顺序', value: 'default' },
@@ -49,8 +79,44 @@ const droppedCount = computed(() => {
   return lines.length - results.value.length;
 });
 
+// 推荐模型：各供应商内置默认（含自定义端点）
+const recommendedModel = computed(() => getSupplierConfig(supplier.value).defaultModel);
+
+const modelPlaceholder = computed(() => `默认：${recommendedModel.value}（留空使用推荐）`);
+
+// 自定义端点 Base URL 占位符随接口类型变化
+const baseUrlPlaceholder = computed(() =>
+  interfaceType.value === 'openai' ? 'https://your-endpoint.com/v1' : 'https://your-endpoint.com',
+);
+
+// 解析最终使用的 Base URL（去掉末尾斜杠）
+const resolvedBaseUrl = computed(() => {
+  if (supplier.value === 'custom') return customBaseUrl.value.trim().replace(/\/+$/, '');
+  return getSupplierConfig(supplier.value).baseUrl;
+});
+
+// 解析最终使用的余额路径
+const resolvedBalancePath = computed(() => {
+  if (supplier.value === 'deepseek') return getSupplierConfig('deepseek').balancePath ?? '/user/balance';
+  return customBalancePath.value.trim() || '/user/balance';
+});
+
+// 解析最终使用的测试模型：用户填了用用户的，否则用推荐
+const resolvedModel = computed(() => {
+  const m = testModel.value.trim();
+  if (m) return m;
+  return recommendedModel.value;
+});
+
 const updateShareState = () => {
-  setToolState({ provider: provider.value });
+  setToolState({
+    interfaceType: interfaceType.value,
+    supplier: supplier.value,
+    customBaseUrl: customBaseUrl.value,
+    customBalancePath: customBalancePath.value,
+    testModel: testModel.value,
+    sortMode: sortMode.value,
+  });
 };
 
 const run = async () => {
@@ -58,13 +124,39 @@ const run = async () => {
   if (lines.length === 0) {
     error.value = '请输入至少一个私钥';
     results.value = [];
+    hasChecked.value = true;
     return;
   }
+
+  // 自定义端点必填校验
+  if (supplier.value === 'custom') {
+    if (!resolvedBaseUrl.value) {
+      error.value = '请输入自定义端点的 Base URL';
+      results.value = [];
+      hasChecked.value = true;
+      return;
+    }
+    if (interfaceType.value !== 'balance' && !resolvedModel.value) {
+      error.value = '请输入测试模型';
+      results.value = [];
+      hasChecked.value = true;
+      return;
+    }
+  }
+
   error.value = '';
   results.value = [];
   checking.value = true;
+  hasChecked.value = true;
   try {
-    results.value = await batchCheckKeys(lines, provider.value);
+    const opts: CheckOptions = {
+      interfaceType: interfaceType.value,
+      supplier: supplier.value,
+      baseUrl: resolvedBaseUrl.value,
+      testModel: resolvedModel.value,
+      balancePath: resolvedBalancePath.value,
+    };
+    results.value = await batchCheckKeys(lines, opts);
     if (results.value.length === 0) {
       error.value = '没有识别到合法格式的密钥，已自动过滤';
     }
@@ -80,10 +172,17 @@ const copyKey = async (rawKey: string) => {
   await copy(rawKey);
 };
 
+const handleClear = () => {
+  clear();
+  results.value = [];
+  error.value = '';
+  hasChecked.value = false;
+};
+
 const deleteKey = (r: KeyCheckResult) => {
-  // Remove from results
+  // 从结果中移除
   results.value = results.value.filter((item) => item.rawKey !== r.rawKey);
-  // Remove corresponding line from input
+  // 从输入中移除对应行
   const lines = input.value.split('\n');
   let removed = false;
   input.value = lines
@@ -97,24 +196,72 @@ const deleteKey = (r: KeyCheckResult) => {
     .join('\n');
 };
 
-useSharedStateRestore({ provider }, () => {
-  // Only restore provider; input keys are not shared for security
+// 切换接口类型时，若当前供应商不在新类型可选列表中，回落到第一项
+watch(interfaceType, (newType) => {
+  if (!SUPPLIERS_BY_INTERFACE[newType].includes(supplier.value)) {
+    supplier.value = SUPPLIERS_BY_INTERFACE[newType][0];
+  }
 });
 
-watch([provider], () => updateShareState());
+useSharedStateRestore(
+  { interfaceType, supplier, customBaseUrl, customBalancePath, testModel, sortMode },
+  () => {
+    // 仅恢复配置，input 密钥出于安全不分享
+  },
+);
+
+watch([interfaceType, supplier, customBaseUrl, customBalancePath, testModel, sortMode], () =>
+  updateShareState(),
+);
 </script>
 
 <template>
   <ToolLayout title="大模型 API Key 批量检查">
     <ToolOptionsBar>
-      <n-select v-model:value="provider" :options="providerOptions" style="width: 140px" />
-      <n-select v-model:value="sortMode" :options="sortOptions" style="width: 140px" />
+      <n-select v-model:value="interfaceType" :options="interfaceOptions" style="width: 150px" />
+      <n-select v-model:value="supplier" :options="supplierOptions" style="width: 140px" />
+      <n-input
+        v-if="interfaceType !== 'balance'"
+        v-model:value="testModel"
+        :placeholder="modelPlaceholder"
+        style="width: 220px"
+      />
+      <n-select
+        v-if="interfaceType === 'balance'"
+        v-model:value="sortMode"
+        :options="sortOptions"
+        style="width: 140px"
+      />
     </ToolOptionsBar>
+
+    <div v-if="supplier === 'custom'" class="custom-endpoint">
+      <div class="custom-endpoint-head">
+        <span class="custom-endpoint-title">自定义端点</span>
+        <span class="custom-endpoint-hint">请求将直连下方地址</span>
+      </div>
+      <ToolOptionsBar class="custom-endpoint-fields">
+        <span class="option-label">Base URL:</span>
+        <n-input
+          v-model:value="customBaseUrl"
+          :placeholder="baseUrlPlaceholder"
+          style="width: 320px"
+        />
+        <template v-if="interfaceType === 'balance'">
+          <span class="option-label">余额路径:</span>
+          <n-input
+            v-model:value="customBalancePath"
+            placeholder="/user/balance"
+            style="width: 180px"
+          />
+        </template>
+      </ToolOptionsBar>
+    </div>
+
     <IoLayout>
       <template #input>
         <ToolInput v-model="input" placeholder="请输入私钥，每行一个..." :rows="6" />
         <ErrorAlert v-if="error" :message="error" />
-        <div v-if="droppedCount > 0" class="dropped-hint">
+        <div v-if="hasChecked && droppedCount > 0" class="dropped-hint">
           已自动过滤 {{ droppedCount }} 行不合法的输入
         </div>
       </template>
@@ -138,13 +285,45 @@ watch([provider], () => updateShareState());
       </template>
     </IoLayout>
     <div class="tool-actions">
-      <n-button secondary @click="clear">清除</n-button>
+      <n-button secondary @click="handleClear">清除</n-button>
       <n-button type="primary" style="min-width: 160px" @click="run" :loading="checking">开始检查</n-button>
     </div>
   </ToolLayout>
 </template>
 
 <style scoped>
+.custom-endpoint {
+  margin-top: var(--app-spacing-sm);
+  padding: var(--app-spacing-sm) var(--app-spacing-md);
+  background: var(--app-bg-soft);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+}
+
+.custom-endpoint-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--app-spacing-sm);
+  margin-bottom: var(--app-spacing-xs);
+}
+
+.custom-endpoint-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.custom-endpoint-hint {
+  font-size: 12px;
+  color: var(--app-text-muted);
+}
+
+.option-label {
+  font-size: 13px;
+  color: var(--app-text-muted);
+  flex-shrink: 0;
+}
+
 .results-list {
   display: flex;
   flex-direction: column;
