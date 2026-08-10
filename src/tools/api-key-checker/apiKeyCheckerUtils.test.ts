@@ -403,3 +403,37 @@ describe('batchCheckKeys', () => {
     expect(results).toHaveLength(0);
   });
 });
+
+describe('checkKey — transport 注入', () => {
+  it('uses the injected transport instead of fetch and treats 200 as 密钥有效', async () => {
+    const transport = vi.fn(async () => new Response(JSON.stringify({ id: 'chatcmpl-1' }), { status: 200 }));
+
+    const result = await checkKey(DS_KEY_A, opts({ supplier: 'deepseek', transport }));
+    expect(transport).toHaveBeenCalledTimes(1);
+    expect(transport).toHaveBeenCalledWith(
+      'https://api.deepseek.com/chat/completions',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(result.valid).toBe(true);
+    expect(result.message).toBe('密钥有效');
+  });
+
+  it('maps a 401 from the transport to 密钥无效', async () => {
+    const transport = vi.fn(async () =>
+      new Response(JSON.stringify({ error: { message: 'invalid api key' } }), { status: 401 }),
+    );
+
+    const result = await checkKey(DS_KEY_A, opts({ supplier: 'deepseek', transport }));
+    expect(result.valid).toBe(false);
+    expect(result.message).toBe('密钥无效');
+  });
+
+  it('falls back to global fetch when no transport is provided', async () => {
+    const fetchSpy = vi.fn(async () => ({ ok: true, json: async () => ({ id: 'chatcmpl-1' }) }));
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+
+    const result = await checkKey(DS_KEY_A, opts({ supplier: 'deepseek' }));
+    expect(result.valid).toBe(true);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+});

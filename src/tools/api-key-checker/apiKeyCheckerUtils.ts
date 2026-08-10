@@ -76,12 +76,16 @@ export interface KeyCheckResult extends CheckResult {
   rawKey: string;
 }
 
+/** 可注入的请求执行器：默认用 fetch，油猴脚本激活时替换为 GM_xmlhttpRequest 代发。 */
+export type HttpTransport = (url: string, init: RequestInit) => Promise<Response>;
+
 export interface CheckOptions {
   interfaceType: InterfaceType;
   supplier: Supplier;
   baseUrl: string;
   testModel: string;
   balancePath?: string;
+  transport?: HttpTransport;
 }
 
 // === 余额数值与展示 ===
@@ -210,19 +214,32 @@ const extractBalanceInfo = (supplier: Supplier, data: Record<string, unknown>): 
 
 // === 各接口类型的检查实现 ===
 
+const doFetch = async (
+  url: string,
+  init: RequestInit,
+  transport?: HttpTransport,
+): Promise<Response> => {
+  if (transport) return transport(url, init);
+  return fetch(url, init);
+};
+
 const checkOpenAI = async (apiKey: string, opts: CheckOptions): Promise<CheckResult> => {
-  const res = await fetch(`${opts.baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
+  const res = await doFetch(
+    `${opts.baseUrl}/chat/completions`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: opts.testModel,
+        messages: [{ role: 'user', content: 'Hi' }],
+        max_tokens: 5,
+      }),
     },
-    body: JSON.stringify({
-      model: opts.testModel,
-      messages: [{ role: 'user', content: 'Hi' }],
-      max_tokens: 5,
-    }),
-  });
+    opts.transport,
+  );
   if (res.ok) {
     return { valid: true, balance: '', message: '密钥有效' };
   }
@@ -232,20 +249,24 @@ const checkOpenAI = async (apiKey: string, opts: CheckOptions): Promise<CheckRes
 // Anthropic 用 x-api-key 鉴权，需 anthropic-version，并通过
 // anthropic-dangerous-direct-browser-access 头让浏览器侧请求绕过 CORS。
 const checkAnthropic = async (apiKey: string, opts: CheckOptions): Promise<CheckResult> => {
-  const res = await fetch(`${opts.baseUrl}/v1/messages`, {
-    method: 'POST',
-    headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-      'Content-Type': 'application/json',
+  const res = await doFetch(
+    `${opts.baseUrl}/v1/messages`,
+    {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: opts.testModel,
+        max_tokens: 1,
+        messages: [{ role: 'user', content: 'Hi' }],
+      }),
     },
-    body: JSON.stringify({
-      model: opts.testModel,
-      max_tokens: 1,
-      messages: [{ role: 'user', content: 'Hi' }],
-    }),
-  });
+    opts.transport,
+  );
   if (res.ok) {
     return { valid: true, balance: '', message: '密钥有效' };
   }
@@ -258,9 +279,13 @@ const checkAnthropic = async (apiKey: string, opts: CheckOptions): Promise<Check
 };
 
 const checkBalance = async (apiKey: string, opts: CheckOptions): Promise<CheckResult> => {
-  const res = await fetch(`${opts.baseUrl}${opts.balancePath ?? ''}`, {
-    headers: { Authorization: `Bearer ${apiKey}` },
-  });
+  const res = await doFetch(
+    `${opts.baseUrl}${opts.balancePath ?? ''}`,
+    {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    },
+    opts.transport,
+  );
   if (!res.ok) {
     return errorToCheckResult(await parseErrorResponse(res));
   }

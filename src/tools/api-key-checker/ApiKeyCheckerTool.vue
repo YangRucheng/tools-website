@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, inject, watch } from 'vue';
-import { NButton, NInput, NSelect } from 'naive-ui';
+import { NButton, NInput, NSelect, NTag } from 'naive-ui';
 import {
   batchCheckKeys,
   extractBalanceValue,
@@ -10,7 +10,7 @@ import {
   SUPPLIER_LABELS,
   getSupplierConfig,
 } from './apiKeyCheckerUtils';
-import type { InterfaceType, Supplier, KeyCheckResult, CheckOptions } from './apiKeyCheckerUtils';
+import type { InterfaceType, Supplier, KeyCheckResult, CheckOptions, HttpTransport } from './apiKeyCheckerUtils';
 import ToolLayout from '@/components/common/ToolLayout.vue';
 import ToolInput from '@/components/common/ToolInput.vue';
 import ToolOptionsBar from '@/components/common/ToolOptionsBar.vue';
@@ -19,9 +19,15 @@ import ErrorAlert from '@/components/common/ErrorAlert.vue';
 import { useToolStorage } from '@/composables/useToolStorage';
 import { useSharedStateRestore } from '@/composables/useSharedStateRestore';
 import { useClipboard } from '@/composables/useClipboard';
+import { useUserscriptBridge } from '@/composables/useUserscriptBridge';
 import type { ToolShareState } from '@/tools/types';
 
 const { copy } = useClipboard();
+
+// 油猴脚本桥接：激活时检查请求经 GM_xmlhttpRequest 代发，绕过 CORS
+const { active, probing, version, stale, request, detect } = useUserscriptBridge();
+const corsHint = ref(false);
+const userscriptUrl = computed(() => `${window.location.origin}/userscripts/api-key-checker.user.js`);
 
 const {
   input,
@@ -119,6 +125,29 @@ const updateShareState = () => {
   });
 };
 
+// 油猴脚本激活时，把 check 的 fetch 替换为脚本代发；否则返回 undefined 走默认 fetch。
+const buildTransport = (): HttpTransport | undefined => {
+  if (!active.value) return undefined;
+  return async (url: string, init: RequestInit): Promise<Response> => {
+    const headers = Object.fromEntries(new Headers(init.headers).entries()) as Record<string, string>;
+    const res = await request({
+      method: init.method ?? 'GET',
+      url,
+      headers,
+      body: typeof init.body === 'string' ? init.body : undefined,
+    });
+    // status 0 为传输层失败（网络/超时），先抛出再构造 Response，避免 new Response(status:0) 崩溃。
+    if (res.status === 0) {
+      throw new TypeError(res.error ?? '请求网络错误（传输层失败）');
+    }
+    return new Response(res.responseText, {
+      status: res.status,
+      statusText: res.statusText,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+};
+
 const run = async () => {
   const lines = input.value.split('\n').filter((l) => l.trim());
   if (lines.length === 0) {
@@ -145,6 +174,7 @@ const run = async () => {
   }
 
   error.value = '';
+  corsHint.value = false;
   results.value = [];
   checking.value = true;
   hasChecked.value = true;
@@ -155,13 +185,23 @@ const run = async () => {
       baseUrl: resolvedBaseUrl.value,
       testModel: resolvedModel.value,
       balancePath: resolvedBalancePath.value,
+      transport: buildTransport(),
     };
     results.value = await batchCheckKeys(lines, opts);
     if (results.value.length === 0) {
       error.value = '没有识别到合法格式的密钥，已自动过滤';
     }
   } catch (e) {
-    error.value = `检查异常: ${String(e)}`;
+    if (e instanceof TypeError) {
+      if (active.value) {
+        error.value = '请求发生网络错误（超时或端点不可达），请重试。';
+      } else {
+        error.value = '检查请求被浏览器跨域（CORS）策略拦截，或网络不可达。安装用户脚本后可绕过跨域限制。';
+        corsHint.value = true;
+      }
+    } else {
+      error.value = `检查异常: ${String(e)}`;
+    }
   } finally {
     checking.value = false;
     updateShareState();
@@ -261,6 +301,16 @@ watch([interfaceType, supplier, customBaseUrl, customBalancePath, testModel, sor
       <template #input>
         <ToolInput v-model="input" placeholder="请输入私钥，每行一个..." :rows="6" />
         <ErrorAlert v-if="error" :message="error" />
+        <div v-if="corsHint" class="cors-install-hint">
+          <span class="cors-install-text">安装用户脚本后刷新页面，即可绕过浏览器跨域限制直连检查。</span>
+          <a
+            :href="userscriptUrl"
+            :data-tampermonkey-install="userscriptUrl"
+            :data-greasemonkey-install="userscriptUrl"
+            rel="noopener"
+            class="install-link install-link--primary"
+          >安装用户脚本</a>
+        </div>
         <div v-if="hasChecked && droppedCount > 0" class="dropped-hint">
           已自动过滤 {{ droppedCount }} 行不合法的输入
         </div>
@@ -285,6 +335,28 @@ watch([interfaceType, supplier, customBaseUrl, customBalancePath, testModel, sor
       </template>
     </IoLayout>
     <div class="tool-actions">
+      <template v-if="active">
+        <n-tag type="success" size="small" :bordered="false">
+          用户脚本已激活{{ version ? ` (v${version})` : '' }}
+        </n-tag>
+        <n-tag v-if="stale" type="warning" size="small" :bordered="false">版本过旧，请更新后刷新</n-tag>
+      </template>
+      <template v-else-if="probing">
+        <n-tag type="info" size="small" :bordered="false">检测用户脚本…</n-tag>
+      </template>
+      <template v-else>
+        <a
+          :href="userscriptUrl"
+          :data-tampermonkey-install="userscriptUrl"
+          :data-greasemonkey-install="userscriptUrl"
+          rel="noopener"
+          title="需先安装油猴（Tampermonkey）浏览器扩展，点击后自动进入安装流程"
+          class="install-link"
+        >一键安装用户脚本（绕过 CORS）</a>
+        <n-tag type="warning" size="small" :bordered="false">未激活</n-tag>
+        <n-button size="tiny" secondary @click="detect">重新检测</n-button>
+      </template>
+
       <n-button secondary @click="handleClear">清除</n-button>
       <n-button type="primary" style="min-width: 160px" @click="run" :loading="checking">开始检查</n-button>
     </div>
@@ -385,6 +457,31 @@ watch([interfaceType, supplier, customBaseUrl, customBalancePath, testModel, sor
   color: var(--app-text-muted);
   font-size: 12px;
   margin-top: var(--app-spacing-xs);
+}
+
+.install-link {
+  font-size: 13px;
+  color: var(--app-primary);
+  text-decoration: underline;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.install-link--primary {
+  font-weight: 600;
+}
+
+.cors-install-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--app-spacing-sm);
+  margin-top: var(--app-spacing-sm);
+  padding: var(--app-spacing-sm) var(--app-spacing-md);
+  border-radius: var(--app-radius-sm);
+  background: var(--app-primary-soft);
+  border: 1px solid var(--app-border);
+  font-size: 13px;
+  color: var(--app-text);
 }
 
 .delete-btn {
