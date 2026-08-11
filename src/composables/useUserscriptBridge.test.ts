@@ -1,6 +1,6 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import { createApp, h } from 'vue';
-import { useUserscriptBridge } from './useUserscriptBridge';
+import { useUserscriptBridge, EXPECTED_SCRIPT_VERSION } from './useUserscriptBridge';
 import type { UserscriptRequestPayload, UserscriptResponsePayload } from './useUserscriptBridge';
 
 const PONG_EVENT = 'miska-userscript-pong';
@@ -54,10 +54,10 @@ describe('useUserscriptBridge', () => {
     const { bridge, unmount } = mountBridge();
     expect(bridge.probing.value).toBe(true);
 
-    window.dispatchEvent(new CustomEvent(PONG_EVENT, { detail: { version: '1.0.0' } }));
+    window.dispatchEvent(new CustomEvent(PONG_EVENT, { detail: { version: EXPECTED_SCRIPT_VERSION } }));
 
     expect(bridge.active.value).toBe(true);
-    expect(bridge.version.value).toBe('1.0.0');
+    expect(bridge.version.value).toBe(EXPECTED_SCRIPT_VERSION);
     expect(bridge.probing.value).toBe(false);
     expect(bridge.stale.value).toBe(false);
     unmount();
