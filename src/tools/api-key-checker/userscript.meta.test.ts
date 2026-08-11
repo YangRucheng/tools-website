@@ -25,6 +25,12 @@ describe('userscript 元数据与桥接版本一致', () => {
     expect(script).toContain('@downloadURL  https://tools.misaka-network.top/userscripts/api-key-checker.user.js');
   });
 
+  it('保留桥接握手与请求监听（ping/pong/request）', () => {
+    expect(script).toContain("addEventListener('miska-userscript-ping'");
+    expect(script).toContain("emit('miska-userscript-pong'");
+    expect(script).toContain("addEventListener('miska-userscript-request'");
+  });
+
   it('@version 与 EXPECTED_SCRIPT_VERSION 保持一致', () => {
     const match = script.match(/@version\s+(\S+)/);
     expect(match?.[1]).toBe(EXPECTED_SCRIPT_VERSION);
