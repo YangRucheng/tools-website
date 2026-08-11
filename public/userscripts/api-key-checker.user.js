@@ -2,15 +2,16 @@
 // @name         大模型密钥检查 · CORS 直连桥接
 // @name:en      API Key Checker - CORS Bridge
 // @namespace    https://tools.misaka-network.top/userscripts
-// @version      1.0.0
+// @version      1.1.0
 // @description  为「大模型密钥检查」工具提供 GM_xmlhttpRequest 直连，绕过浏览器 CORS。安装后请刷新页面。
 // @description:en  CORS bridge for the API Key Checker tool. Refresh the page after install.
 // @author       Misaka Network
 // @match        https://tools.misaka-network.top/*
-// @match        https://*.misaka-network.top/*
-// @match        https://*.keorigin.com/*
+// @match        https://tools.keorigin.com/*
 // @match        http://localhost/*
 // @match        http://127.0.0.1/*
+// @updateURL    https://tools.misaka-network.top/userscripts/api-key-checker.user.js
+// @downloadURL  https://tools.misaka-network.top/userscripts/api-key-checker.user.js
 // @grant        GM_xmlhttpRequest
 // @connect      *
 // @run-at       document-start
@@ -22,7 +23,7 @@
   'use strict';
 
   // 与 src/composables/useUserscriptBridge.ts 中 EXPECTED_SCRIPT_VERSION 保持一致
-  var VERSION = '1.0.0';
+  var VERSION = '1.1.0';
 
   if (typeof GM_xmlhttpRequest === 'undefined') {
     console.warn('[miska-userscript] GM_xmlhttpRequest unavailable, bridge disabled.');
