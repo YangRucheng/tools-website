@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, inject, watch } from 'vue';
-import { NButton, NInput, NSelect, NTag } from 'naive-ui';
+import { NButton, NInput, NSelect } from 'naive-ui';
 import {
   batchCheckKeys,
   extractBalanceValue,
@@ -25,7 +25,7 @@ import type { ToolShareState } from '@/tools/types';
 const { copy } = useClipboard();
 
 // 油猴脚本桥接：激活时检查请求经 GM_xmlhttpRequest 代发，绕过 CORS
-const { active, probing, version, stale, request, detect } = useUserscriptBridge();
+const { active, request } = useUserscriptBridge();
 const corsHint = ref(false);
 const userscriptUrl = computed(() => `${window.location.origin}/userscripts/api-key-checker.user.js`);
 
@@ -301,15 +301,19 @@ watch([interfaceType, supplier, customBaseUrl, customBalancePath, testModel, sor
       <template #input>
         <ToolInput v-model="input" placeholder="请输入私钥，每行一个..." :rows="6" />
         <ErrorAlert v-if="error" :message="error" />
-        <div v-if="corsHint" class="cors-install-hint">
+        <div v-if="corsHint && !active" class="cors-install-hint">
           <span class="cors-install-text">安装用户脚本后刷新页面，即可绕过浏览器跨域限制直连检查。</span>
-          <a
+          <n-button
+            tag="a"
             :href="userscriptUrl"
             :data-tampermonkey-install="userscriptUrl"
             :data-greasemonkey-install="userscriptUrl"
             rel="noopener"
-            class="install-link install-link--primary"
-          >安装用户脚本</a>
+            size="small"
+            type="primary"
+          >
+            安装用户脚本
+          </n-button>
         </div>
         <div v-if="hasChecked && droppedCount > 0" class="dropped-hint">
           已自动过滤 {{ droppedCount }} 行不合法的输入
@@ -335,27 +339,17 @@ watch([interfaceType, supplier, customBaseUrl, customBalancePath, testModel, sor
       </template>
     </IoLayout>
     <div class="tool-actions">
-      <template v-if="active">
-        <n-tag type="success" size="small" :bordered="false">
-          用户脚本已激活{{ version ? ` (v${version})` : '' }}
-        </n-tag>
-        <n-tag v-if="stale" type="warning" size="small" :bordered="false">版本过旧，请更新后刷新</n-tag>
-      </template>
-      <template v-else-if="probing">
-        <n-tag type="info" size="small" :bordered="false">检测用户脚本…</n-tag>
-      </template>
-      <template v-else>
-        <a
-          :href="userscriptUrl"
-          :data-tampermonkey-install="userscriptUrl"
-          :data-greasemonkey-install="userscriptUrl"
-          rel="noopener"
-          title="需先安装油猴（Tampermonkey）浏览器扩展，点击后自动进入安装流程"
-          class="install-link"
-        >一键安装用户脚本（绕过 CORS）</a>
-        <n-tag type="warning" size="small" :bordered="false">未激活</n-tag>
-        <n-button size="tiny" secondary @click="detect">重新检测</n-button>
-      </template>
+      <n-button
+        v-if="!active"
+        tag="a"
+        :href="userscriptUrl"
+        :data-tampermonkey-install="userscriptUrl"
+        :data-greasemonkey-install="userscriptUrl"
+        rel="noopener"
+        title="需先安装油猴（Tampermonkey）扩展，点击后进入安装流程，安装完成后刷新页面生效"
+      >
+        安装用户脚本（绕过 CORS）
+      </n-button>
 
       <n-button secondary @click="handleClear">清除</n-button>
       <n-button type="primary" style="min-width: 160px" @click="run" :loading="checking">开始检查</n-button>
@@ -457,18 +451,6 @@ watch([interfaceType, supplier, customBaseUrl, customBalancePath, testModel, sor
   color: var(--app-text-muted);
   font-size: 12px;
   margin-top: var(--app-spacing-xs);
-}
-
-.install-link {
-  font-size: 13px;
-  color: var(--app-primary);
-  text-decoration: underline;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.install-link--primary {
-  font-weight: 600;
 }
 
 .cors-install-hint {
