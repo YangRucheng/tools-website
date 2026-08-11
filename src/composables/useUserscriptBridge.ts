@@ -27,7 +27,7 @@ const HANDSHAKE_TIMEOUT_MS = 500;
 const REQUEST_TIMEOUT_MS = 20000;
 
 /** 与 public/userscripts/api-key-checker.user.js 的 @version 保持一致。 */
-export const EXPECTED_SCRIPT_VERSION = '1.1.0';
+export const EXPECTED_SCRIPT_VERSION = '1.2.0';
 
 // secure context（https / localhost）下用 crypto.randomUUID，否则回落时间戳 + 随机串。
 const genRequestId = (): string => {

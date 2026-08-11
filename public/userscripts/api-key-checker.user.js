@@ -2,7 +2,7 @@
 // @name         大模型密钥检查 · CORS 直连桥接
 // @name:en      API Key Checker - CORS Bridge
 // @namespace    https://tools.misaka-network.top/userscripts
-// @version      1.1.0
+// @version      1.2.0
 // @description  为「大模型密钥检查」工具提供 GM_xmlhttpRequest 直连，绕过浏览器 CORS。安装后请刷新页面。
 // @description:en  CORS bridge for the API Key Checker tool. Refresh the page after install.
 // @author       Misaka Network
@@ -23,7 +23,7 @@
   'use strict';
 
   // 与 src/composables/useUserscriptBridge.ts 中 EXPECTED_SCRIPT_VERSION 保持一致
-  var VERSION = '1.1.0';
+  var VERSION = '1.2.0';
 
   if (typeof GM_xmlhttpRequest === 'undefined') {
     console.warn('[miska-userscript] GM_xmlhttpRequest unavailable, bridge disabled.');
@@ -38,6 +38,35 @@
   window.addEventListener('miska-userscript-ping', function () {
     emit('miska-userscript-pong', { version: VERSION });
   });
+
+  // 调试输出：打印大模型接口的请求输入与响应输出，便于排查。
+  // 请求头中的 Authorization / x-api-key 自动打码，避免 API Key 明文出现在控制台。
+  function maskSensitiveHeaders(headers) {
+    var masked = {};
+    Object.keys(headers || {}).forEach(function (key) {
+      var value = headers[key];
+      var lower = key.toLowerCase();
+      if ((lower === 'authorization' || lower === 'x-api-key') && typeof value === 'string') {
+        masked[key] = value.slice(0, 6) + '…' + value.slice(-4) + '（已打码）';
+      } else {
+        masked[key] = value;
+      }
+    });
+    return masked;
+  }
+
+  function logRequest(method, url, headers, body) {
+    console.groupCollapsed('[miska-userscript] 请求 →', method, url);
+    console.log('请求头:', maskSensitiveHeaders(headers));
+    console.log('请求体:', typeof body === 'string' && body ? body : '(无)');
+    console.groupEnd();
+  }
+
+  function logResponse(url, status, statusText, responseText) {
+    console.groupCollapsed('[miska-userscript] 响应 ←', status, url);
+    console.log('响应体:', typeof responseText === 'string' && responseText ? responseText : '(空)');
+    console.groupEnd();
+  }
 
   // 页面 → 脚本：发起 HTTP 请求
   window.addEventListener('miska-userscript-request', function (e) {
@@ -57,22 +86,30 @@
       return;
     }
 
+    var method = typeof detail.method === 'string' ? detail.method.toUpperCase() : 'GET';
+    var headers = detail.headers && typeof detail.headers === 'object' ? detail.headers : {};
+    var body = typeof detail.body === 'string' ? detail.body : undefined;
+    logRequest(method, url, headers, body);
+
     GM_xmlhttpRequest({
-      method: typeof detail.method === 'string' ? detail.method.toUpperCase() : 'GET',
+      method: method,
       url: url,
-      headers: detail.headers && typeof detail.headers === 'object' ? detail.headers : {},
-      data: typeof detail.body === 'string' ? detail.body : undefined,
+      headers: headers,
+      data: body,
       timeout: 20000,
       nofail: true, // 自行处理错误，抑制 Tampermonkey 网络失败通知
       onload: function (res) {
+        var responseText = typeof res.responseText === 'string' ? res.responseText : '';
+        logResponse(url, res.status, res.statusText || '', responseText);
         emit('miska-userscript-response', {
           requestId: requestId,
           status: res.status,
           statusText: res.statusText || '',
-          responseText: typeof res.responseText === 'string' ? res.responseText : '',
+          responseText: responseText,
         });
       },
       onerror: function (res) {
+        console.error('[miska-userscript] 请求失败:', url, res && res.error ? res.error : 'Network error');
         emit('miska-userscript-response', {
           requestId: requestId,
           status: 0,
@@ -82,6 +119,7 @@
         });
       },
       ontimeout: function () {
+        console.error('[miska-userscript] 请求超时:', url);
         emit('miska-userscript-response', {
           requestId: requestId,
           status: 0,
